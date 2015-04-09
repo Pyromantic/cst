@@ -47,38 +47,46 @@ class fileParser (object) :
 
         keyword = {'+' , '-', '*', '&', '!', '~', '=', '%', '<', '>', '|', '^', '.', '?'}
 
-        buffer = []
-
         char = data2parse[0]
 
         while char :
+            try:
+              char = { 
+                '"' : lambda data : self._quotationHandle (data),
+                '\'': lambda data : self._simpleQuotationHandle (data),
+                '/' : lambda data : self._slashHandle (data),
+                '+' : lambda data : self._plusHandle (data),
+               
+              }[char](data)
+            except KeyError :
+                char = data()          
 
-            if char == '/' :
-                self._slashHandle (data)
 
-            char = data()
     # operator slah handle
     def _slashHandle (self, data) : 
         char = data()
             
         # single line commentary   
         if char == '/' :
-            self._skip2EOL (data)
+            char = self._skip2EOL (data)
 
         # multi line commentary
         elif char == '*' :
-            self._skip2EOC (data)
+            char = self._skip2EOC (data)
         
         # probably operator
         else :
             self._operators += 1
-             
+        
+        return char
 
     # skips till end of the line
     def _skip2EOL (self, data) :
         char = data()
         while char != '\n' and char :
             char = data()
+
+        return char
     
     # skips till end of the multi line commentary
     def _skip2EOC (self, data) :
@@ -89,7 +97,39 @@ class fileParser (object) :
             if char == '*' :
                 char = data()
                 if char == '/' :
-                    return 
+                  return data()
             else :
                 char = data()
   
+    # quotation mark handle
+    def _quotationHandle (self, data) :
+        char = data()
+
+        while char != '"' :
+            char = data()
+        
+        return data()
+
+    # simple quotation mark handle
+    def _simpleQuotationHandle (self, data) :
+        char = data()
+
+        while char != '\'' :
+            char = data()
+        
+        return data()
+
+    # handles plus and associated operators
+    def _plusHandle (self, data) :
+        char = data()
+
+        # probably increment or += operator
+        if char == '+' or char == '=' :
+            self._operators += 1
+            char = data()
+
+        # probably plus operator
+        else :
+            self._operators += 1
+
+        return char
