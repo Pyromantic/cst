@@ -79,7 +79,7 @@ class fileParser (object) :
                 '/' : lambda : self._slashHandle (),
 
                 '-' : lambda : self._minusLikeHandle (),
-                '+' : lambda : self._basicOperatorHandle (char),  
+                '+' : lambda : self._plusLikeHandle (),  
 
                 '*' : lambda : self._multiLikeHandle (),
 
@@ -312,6 +312,10 @@ class fileParser (object) :
     def _minusLikeHandle (self) :
         char = self.fileFront.next()
 
+        if char.isnumeric() : 
+            if self.fileFront.data[self.fileFront._i - 2] == 'e' and self._isDouble() :
+                return char
+
         #  -> operator or -- operator or == operator #
         if char == '>' or char == '-' or char == '=' :
            char = self.fileFront.next()
@@ -320,6 +324,35 @@ class fileParser (object) :
         self._operators += 1
 
         return char
+
+    # handles plus and associated operatorrs (look-a-like)
+    def _plusLikeHandle (self) :
+        char = self.fileFront.next()
+
+        # funny part
+        if char.isnumeric() : 
+            if self.fileFront.data[self.fileFront._i - 2] == 'e' and self._isDouble() :
+                return char
+
+        else :
+            if char == '+' or char == '=' :
+                char = self.fileFront.next()
+
+        self._operators += 1
+ 
+        return char
+    
+    # HARD check if its double
+    def _isDouble (self) :
+        if self.fileFront.data[self.fileFront._i - 3].isnumeric() :
+            x = 4
+            while self.fileFront.data[self.fileFront._i - x].isnumeric() or self.fileFront.data[self.fileFront._i - x] == '.' :
+                x += 1
+
+            if self.fileFront.data[self.fileFront._i - x].isspace() :
+                return True
+        
+        return False
 
     # handles lesser and associated operators (look-a-like)
     def _lesserLikeHandle (self) :
