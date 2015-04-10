@@ -109,6 +109,7 @@ class fileParser (object) :
 
         char = self.fileFront.next()
 
+
         while char :
 
             char = self._buffer.bufferReseter (self.fileFront.next, char)
@@ -229,7 +230,7 @@ class fileParser (object) :
         while char != '\n' and char :
             char = self.fileFront.next()
 
-        return char
+        return self.fileFront.next()
     
     # skips till end of the multi line commentary
     def _skip2EOC (self) :

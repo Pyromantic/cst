@@ -79,7 +79,7 @@ class fileFront (object) :
         with open (self.front[self._filePointer]) as file:
             data = file.read()
 
-        self._i = 0
+        self._i = -1
         self._fileLength = len(data) - 1
         self.data = data
 
