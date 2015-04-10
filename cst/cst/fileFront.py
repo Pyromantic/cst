@@ -17,7 +17,7 @@ class _constants (object) :
 class fileFront (object) :
     """class creating files front, used by cStats script"""
 
-    # constructor
+    # constructor #
     def __init__ (self, input, flag) :
 
         self.front = []
@@ -34,7 +34,12 @@ class fileFront (object) :
         else :
             raise AssertionError (input + _constants.notExists())
 
-        self._filePointer = 0
+    ### variables ###
+    _filePointer = -1
+    _i = -1
+    _fileLength = 0
+
+    ### methods ###
 
     # sorts out given files into a front
     def _fillUpFront (self, input, flag) :
@@ -63,16 +68,34 @@ class fileFront (object) :
             }[os.path.splitext(file)[1][1:]]()
         except KeyError :
             None
-      
+
     # returns string containing file content
     def _getFileContent (self) :
+        self._filePointer += 1 
 
         if self._filePointer >= len(self.front) :
-            return None
+            return False
 
         with open (self.front[self._filePointer]) as file:
             data = file.read()
 
-        self._filePointer += 1
+        self._i = 0
+        self._fileLength = len(data) - 1
+        self.data = data
 
-        return data
+        return True
+
+    # iterator
+    def it (self) :
+        if self._i < self._fileLength :
+            self._i += 1
+            return True
+        else :
+            return False
+
+    next = lambda self : self.data[self._i] if self.it() else False
+
+   
+
+ 
+

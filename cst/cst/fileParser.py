@@ -9,11 +9,45 @@ class _constants (object) :
     def help () :
         return 'theres no help neither hope'
 
+# character buffer class
+class _characterBuffer (object) :
+    """ buffer class, used by Cstats script """
+    # constructor
+    def __init__ (self) :
+        None
+
+    buffer = ''
+
+    # adds character to buffer
+    def add2Buffer (self, char) :
+        if isinstance (char, str) :
+            self.buffer += char
+
+    # decides if buffer should be reseted
+    def bufferReseter (self, next, char) :
+        try:
+           return {
+                ';' : lambda : self.resetBuffer (next),
+                ',' : lambda : self.resetBuffer (next),
+                '(' : lambda : self.resetBuffer (next),
+                ')' : lambda : self.resetBuffer (next),
+                '\n': lambda : self.resetBuffer (next),
+                '\t': lambda : self.resetBuffer (next),
+                '\v': lambda : self.resetBuffer (next),
+                }[char]()
+        except KeyError :
+            return char
+
+    # resets buffer
+    def resetBuffer (self, next) :
+        self.buffer = ''
+        return next()
+
 # file parser class #
 class fileParser (object) :
     """file parsing class, used by cStats script"""
 
-    # constructor 
+    # constructor #
     def __init__ (self, front, flag) :
         
         self.fileFront = front
@@ -26,53 +60,162 @@ class fileParser (object) :
         'w' : lambda front : self._parseByPattern(front, flag),
         }[flag[0]](front)    
  
-    # iterator
-    def it (self) :
-        if self._i < self._fileLength :
-            self._i += 1
-            return True
-        else :
+    ### variables ###
+
+    _buffer = _characterBuffer ()
+    _operators = 0
+
+    ### methods ###
+
+    # dispatcher for known operands
+    def _dispatchOperands (self, char) :
+        if not char :
             return False
 
+        return { 
+                '#' : lambda : self._skip2EOL(),
+                '"' : lambda : self._quotationHandle (),
+                '\'': lambda : self._simpleQuotationHandle (),
+                '/' : lambda : self._slashHandle (),
+
+                '-' : lambda : self._minusLikeHandle (),
+                '+' : lambda : self._basicOperatorHandle (char),  
+
+                '*' : lambda : self._multiLikeHandle (),
+
+                '<' : lambda : self._lesserLikeHandle (),
+                '>' : lambda : self._greaterLikeHandle (),
+
+                '=' : lambda : self._basicOperatorHandle (char),             
+                '%' : lambda : self._basicOperatorHandle (char),
+                '&' : lambda : self._basicOperatorHandle (char),
+                '|' : lambda : self._basicOperatorHandle (char),
+
+
+                '^' : lambda : self._XORhandle(next, char),
+
+                '!' : lambda : self._notHandle (next),
+
+                '~' : lambda : self._singleSpaceHandle (next),
+                
+          }[char]()
+    
     # parse files by operators
     def _parseByOperators (self, front) :
-        data2parse = self.fileFront._getFileContent()
-
-        self._i = 0
-        self._fileLength = len(data2parse) - 1
-
-        data = lambda : data2parse[self._i] if self.it() else False
+        if not self.fileFront._getFileContent() :
+            return 
 
         self._operators = 0
 
-        keyword = {'+' , '-', '*', '&', '!', '~', '=', '%', '<', '>', '|', '^', '.', '?'}
-
-        char = data2parse[0]
+        char = self.fileFront.next()
 
         while char :
-            try:
-              char = { 
-                '"' : lambda data : self._quotationHandle (data),
-                '\'': lambda data : self._simpleQuotationHandle (data),
-                '/' : lambda data : self._slashHandle (data),
-                '+' : lambda data : self._plusHandle (data),
-               
-              }[char](data)
-            except KeyError :
-                char = data()          
 
+            char = self._buffer.bufferReseter (self.fileFront.next, char)
+
+            try :
+                char = self._dispatchOperands (char)
+            except KeyError :
+                if char and not char.isspace() :
+
+                    self._buffer.add2Buffer (char)
+
+                    if self._isDeclarator () :
+                        char = self._declarator ()
+                        continue
+
+                char = self.fileFront.next()         
+
+
+        print ('pocet operatoru: ' , self._operators)
+     
+    # checks if its in buffer a valid basic type
+    def _isDeclarator (self) :
+
+        declarator = lambda str : True if str and (str.isspace() or str == '*') else False
+
+        try : 
+            declarator = {
+                'void'  : lambda : declarator(self.fileFront.next()),
+                'int'   : lambda : declarator(self.fileFront.next()),
+                'char'  : lambda : declarator(self.fileFront.next()),
+                'short' : lambda : declarator(self.fileFront.next()),
+                'float' : lambda : declarator(self.fileFront.next()),
+                'double': lambda : declarator(self.fileFront.next()),
+                'long'  : lambda : declarator(self.fileFront.next()),
+            }[self._buffer.buffer]()
+        except KeyError :
+            declarator = False
+        
+        return declarator
+   
+    # handles declaration block
+    def _declarationHandle (self) :
+        
+        char = self.fileFront.next()
+        while char != ';' and char != ',' :
+
+            if char == '(' :
+               char = self._argumentsOperators ()
+               continue
+            
+            try :
+               char = self._dispatchOperands (char)
+            except KeyError :
+                char = self.fileFront.next()
+                       
+        return char
+
+    # function arguments
+    def _argumentsOperators (self) :
+        char = self.fileFront.next()
+        while char != ')':
+
+            if char == '(' :
+               char = self._argumentsOperators (self)
+               continue
+
+            try :
+                char = self._dispatchOperands (char)
+            except KeyError :
+                char = self.fileFront.next()
+                       
+        return self.fileFront.next()
+
+    # declaration block
+    def _declarator (self) :
+
+        char = self._buffer.resetBuffer (self.fileFront.next)
+
+        while char != False :
+            try :
+                char = {
+                ';' : lambda : False,
+                '{' : lambda : False,
+
+                '=' : lambda : True,
+                }[char]()
+            except KeyError :
+                char = self.fileFront.next()
+                continue
+
+            if char == True :
+               self._operators += 1
+               char = self._declarationHandle ()
+
+        return self.fileFront.next()
 
     # operator slah handle
-    def _slashHandle (self, data) : 
-        char = data()
+    def _slashHandle (self) : 
+        char = self.fileFront.next()
             
         # single line commentary   
         if char == '/' :
-            char = self._skip2EOL (data)
+            char = self._skip2EOL ()
 
         # multi line commentary
         elif char == '*' :
-            char = self._skip2EOC (data)
+            char = self._skip2EOC ()
         
         # probably operator
         else :
@@ -81,55 +224,154 @@ class fileParser (object) :
         return char
 
     # skips till end of the line
-    def _skip2EOL (self, data) :
-        char = data()
+    def _skip2EOL (self) :
+        char = self.fileFront.next()
         while char != '\n' and char :
-            char = data()
+            char = self.fileFront.next()
 
         return char
     
     # skips till end of the multi line commentary
-    def _skip2EOC (self, data) :
-        char = data()
+    def _skip2EOC (self) :
+        char = self.fileFront.next()
 
-        while char :
-              
+        while char :        
             if char == '*' :
-                char = data()
+                char = self.fileFront.next()
                 if char == '/' :
-                  return data()
+                  return self.fileFront.next()
             else :
-                char = data()
+                char = self.fileFront.next()
   
     # quotation mark handle
-    def _quotationHandle (self, data) :
-        char = data()
+    def _quotationHandle (self) :
+        char = self.fileFront.next()
 
         while char != '"' :
-            char = data()
-        
-        return data()
+            if char == '\\' :
+                self.fileFront.next()
+            char = self.fileFront.next()
+
+        return self.fileFront.next()
 
     # simple quotation mark handle
-    def _simpleQuotationHandle (self, data) :
-        char = data()
+    def _simpleQuotationHandle (self) :
+        char = self.fileFront.next()
 
         while char != '\'' :
-            char = data()
+            if char == '\\' :
+                self.fileFront.next()
+            char = self.fileFront.next()
         
-        return data()
+        return self.fileFront.next()
 
-    # handles plus and associated operators
-    def _plusHandle (self, data) :
-        char = data()
+    # handles given operator and associated operators
+    def _basicOperatorHandle (self, operator) :
+        char = self.fileFront.next()
 
-        # probably increment or += operator
-        if char == '+' or char == '=' :
-            self._operators += 1
-            char = data()
+        # probably increment/decrement/multidimensional or overloaded = operator
+        if char == operator or char == '=' :
+            char = self.fileFront.next()
 
-        # probably plus operator
-        else :
-            self._operators += 1
+        # else  probably just simple operator
+        self._operators += 1
+
 
         return char
+
+    # handle XOR operator
+    def _XORhandle (self) :
+        char = self.fileFront.next()
+
+        if char == '=' :
+            self.fileFront.next()
+
+        self._operators += 1
+
+
+        return self.fileFront.next()
+
+    # single space operators handle
+    def _singleSpaceHandle (self) :
+        self._operators += 1
+        return self.fileFront.next()
+    
+    # not operator handle
+    def _notHandle (self) :
+        char = self.fileFront.next()
+
+        if char == '=' : 
+            self.fileFront.next()
+        
+        self._operators += 1
+
+        return self.fileFront.next()
+
+    # handles minus and associated operators (look-a-like)
+    def _minusLikeHandle (self) :
+        char = self.fileFront.next()
+
+        #  -> operator or -- operator or == operator #
+        if char == '>' or char == '-' or char == '=' :
+           char = self.fileFront.next()
+
+        # increments operators
+        self._operators += 1
+
+        return char
+
+    # handles lesser and associated operators (look-a-like)
+    def _lesserLikeHandle (self) :
+        char = self.fileFront.next()
+
+        self._operators += 1
+
+        if char == '<' :
+            char = self.fileFront.next()
+
+            if char == '=' :               
+                return self.fileFront.next()
+            else :
+                return char
+
+        elif char == '=' :
+           return self.fileFront.next()
+
+        else : 
+           return char
+    
+    # handles greater and associated operators (look-a-like)
+    def _greaterLikeHandle (self) :
+        char = self.fileFront.next()
+
+        self._operators += 1
+
+        if char == '>' :
+            char = self.fileFront.next()
+
+            if char == '=' :               
+                return self.fileFront.next()
+            else :
+                return char
+
+        elif char == '=' :
+           return self.fileFront.next()
+
+        else : 
+           return char
+
+    # handles multiplication and associated operators (look-a-like)
+    def _multiLikeHandle (self) :
+        char = self.fileFront.next()
+        self._operators += 1
+
+        if char == '=' :
+            return self.fileFront.next()
+
+        while char == '*' :
+            self._operators += 1
+            char = self.fileFront.next()
+
+        return char
+
+    #
