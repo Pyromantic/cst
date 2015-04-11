@@ -13,7 +13,7 @@
     <Name>cst</Name>
     <RootNamespace>cst</RootNamespace>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>--input=D:\School\IPP\cst\files\ --output=file -o </CommandLineArguments>
+    <CommandLineArguments>--input=D:\School\IPP\cst\files\ --nosubdir --output=file -o </CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -33,6 +33,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="fileParser.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="operatorsHandle.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="write2output.py">
