@@ -15,12 +15,15 @@ class cStats (object) :
 
         # arguments handle
         arguments = args_handle (argc, argv)
-        
+
         # files front
         front = fileFront (arguments._input, arguments._noSubDir)
 
         # file parser
         parser = fileParser (front, arguments._parsingFlag)
+
+        # output writer
+        parser.output.writeOutput (arguments._output, arguments._p)
         
 
 

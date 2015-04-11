@@ -1,5 +1,7 @@
 # standard imports #
 
+# my imports #
+from write2output import write2output
 
 # constants for fileParser class #
 class _constants (object) :
@@ -53,16 +55,18 @@ class fileParser (object) :
         self.fileFront = front
     
         {
-        'o' : lambda front : self._parseByOperators(front),
-        'i' : lambda front : self._parseByIdentificators(front),
-        'k' : lambda front : self._parseByKeywords(front),
-        'c' : lambda front : self._parseByComments(front),
-        'w' : lambda front : self._parseByPattern(front, flag),
-        }[flag[0]](front)    
+        'o' : lambda : self._parseByOperators(front),
+        'i' : lambda : self._parseByIdentificators(front),
+        'k' : lambda : self._parseByKeywords(front),
+        'c' : lambda : self._parseByComments(front),
+        'w' : lambda : self._parseByPattern(front, flag),
+        }[flag[0]]()    
  
     ### variables ###
+    
+    output = write2output()
 
-    _buffer = _characterBuffer ()
+    _buffer = _characterBuffer()
     _operators = 0
 
     ### methods ###
@@ -92,43 +96,44 @@ class fileParser (object) :
                 '|' : lambda : self._basicOperatorHandle (char),
 
 
-                '^' : lambda : self._XORhandle(next, char),
+                '^' : lambda : self._XORhandle(char),
 
-                '!' : lambda : self._notHandle (next),
+                '!' : lambda : self._notHandle (),
 
-                '~' : lambda : self._singleSpaceHandle (next),
+                '~' : lambda : self._singleSpaceHandle (),
                 
           }[char]()
     
     # parse files by operators
     def _parseByOperators (self, front) :
-        if not self.fileFront._getFileContent() :
-            return 
 
-        self._operators = 0
+        while self.fileFront._getFileContent() :
+            
+            self.output.addFile(self.fileFront.front[self.fileFront._filePointer])
 
-        char = self.fileFront.next()
+            self._operators = 0
+
+            char = self.fileFront.next()
+
+            while char :
+
+                char = self._buffer.bufferReseter (self.fileFront.next, char)
+
+                try :
+                    char = self._dispatchOperands (char)
+                except KeyError :
+                    if char and not char.isspace() :
+
+                        self._buffer.add2Buffer (char)
+
+                        if self._isDeclarator () :
+                            char = self._declarator ()
+                            continue
+
+                    char = self.fileFront.next()         
 
 
-        while char :
-
-            char = self._buffer.bufferReseter (self.fileFront.next, char)
-
-            try :
-                char = self._dispatchOperands (char)
-            except KeyError :
-                if char and not char.isspace() :
-
-                    self._buffer.add2Buffer (char)
-
-                    if self._isDeclarator () :
-                        char = self._declarator ()
-                        continue
-
-                char = self.fileFront.next()         
-
-
-        print ('pocet operatoru: ' , self._operators)
+            self.output.addValue (self._operators)
      
     # checks if its in buffer a valid basic type
     def _isDeclarator (self) :
